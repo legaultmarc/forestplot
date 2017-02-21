@@ -1,0 +1,42 @@
+{
+  "plotConfig": {
+    "effectLabel": "Odds Ratio",
+    "vBar": 1,
+    "nTicks": 6
+  },
+  "data": [
+    {
+      "description": "PCSK9 score above median",
+      "effect": {"effect": 0.92, "low": 0.88, "high": 0.95},
+      "markerSize": 0.5
+    },
+    {
+      "description": "Quartile of PCSK9 scores"
+    },
+    {
+      "description": "4",
+      "descriptionOffset": 1,
+      "effect": {"effect": 0.89, "low": 0.84, "high": 0.94},
+      "markerSize": 0.5
+    },
+    {
+      "description": "3",
+      "descriptionOffset": 1,
+      "effect": {"effect": 0.93, "low": 0.88, "high": 0.98},
+      "markerSize": 0.5
+    },
+    {
+      "description": "2",
+      "descriptionOffset": 1,
+      "effect": {"effect": 0.97, "low": 0.91, "high": 1.03},
+      "markerSize": 0.5
+    },
+    {
+      "description": "1",
+      "descriptionOffset": 1,
+      "effect": {"effect": 1, "low": 1, "high": 1},
+      "markerSize": 0.5,
+      "overrideLabel": "Reference"
+    }
+  ]
+}

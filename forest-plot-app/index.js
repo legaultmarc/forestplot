@@ -2,50 +2,6 @@ import d3_save_svg from 'd3-save-svg';
 import * as d3 from 'd3';
 
 
-var plotConfig = {
-  mountNode: '#svg',
-  effectLabel: 'Odds Ratio',
-  vBar: 1,
-  nTicks: 6
-};
-
-
-var data = [
-  {
-    description: 'PCSK9 score above median',
-    effect: {effect: 0.92, low: 0.88, high: 0.95},
-    markerSize: 0.5
-  },
-  {
-    description: 'Quartile of PCSK9 scores',
-  },
-  {
-    description: '4',
-    descriptionOffset: 1,
-    effect: {effect: 0.89, low: 0.84, high: 0.94},
-    markerSize: 0.5
-  },
-  {
-    description: '3',
-    descriptionOffset: 1,
-    effect: {effect: 0.93, low: 0.88, high: 0.98},
-    markerSize: 0.5
-  },
-  {
-    description: '2',
-    descriptionOffset: 1,
-    effect: {effect: 0.97, low: 0.91, high: 1.03},
-    markerSize: 0.5
-  },
-  {
-    description: '1',
-    descriptionOffset: 1,
-    effect: {effect: 1, low: 1, high: 1},
-    markerSize: 0.5,
-    overrideLabel: 'Reference'
-  },
-];
-
 
 function forestPlot(config, data) {
 
@@ -76,7 +32,10 @@ function forestPlot(config, data) {
     return 'translate(' + x + ', ' + y + ')';
   };
 
-  var svg = d3.select('#svg').append('svg')
+  // Clear previous plot if needed.
+  d3.select(config.mountNode).selectAll("*").remove();
+
+  var svg = d3.select(config.mountNode).append('svg')
     .attr('width', config.width)
     .attr('height', config.height)
     .append('g')
@@ -266,5 +225,43 @@ function forestPlot(config, data) {
 }
 
 
+// File Picker.
+function parseDataFile(text) {
+  var data = JSON.parse(text);
+  console.log("Loaded JSON from file.");
+  forestPlot(data["plotConfig"], data["data"]);
+}
+
+function loadDataFile() {
+  var filePicker = document.getElementById("data_file");
+
+  var selectedFile = filePicker.files[0];
+  console.log(`Selected file: '${selectedFile.name}'.`);
+
+  var f = new FileReader();
+
+  f.onload = (e) => {
+    parseDataFile(f.result);
+  };
+
+  f.readAsText(selectedFile);
+
+}
+
+// Bind form submit.
+(function () {
+
+  var form = document.getElementById("form");
+
+  form.onsubmit = (e) => {
+    loadDataFile();
+    return false;
+  }
+
+})();
+
+
 // First plot with default values.
-forestPlot(plotConfig, data);
+d3.json("default.json", (data) => {
+  forestPlot(data["plotConfig"], data["data"]);
+});
