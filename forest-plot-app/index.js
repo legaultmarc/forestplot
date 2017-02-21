@@ -2,6 +2,32 @@ import d3_save_svg from 'd3-save-svg';
 import * as d3 from 'd3';
 
 
+/**
+ * Returns a list of low, mid, high for the effect size.
+ **/
+function _get_effect(d) {
+
+  if (d.effect.effect !== undefined &&
+      d.effect.low !== undefined &&
+      d.effect.high !== undefined) {
+    return [
+      d.effect.low, d.effect.effect, d.effect.high
+    ];
+  }
+
+  try {
+    return [
+      d.effect.effect - d.effect.sd,
+      d.effect.effect,
+      d.effect.effect + d.effect.sd
+    ];
+  } catch(e) {}
+
+  throw "Invalid effect size reprensentation. Expected either 'effect' and " +
+        "'sd' or 'effect', 'low' and 'high'.";
+
+}
+
 
 function forestPlot(config, data) {
 
@@ -87,15 +113,20 @@ function forestPlot(config, data) {
     .classed('plot', true)
 
   // Define scale and axis.
-  var lowX = d3.min(data, function(d) {
-    try { return d.effect.low; }
-    catch (e) { return Infinity; }
-  });
+  var lowX = Infinity;
+  var highX = -Infinity;
+  {
+    let _, _low, _high;
 
-  var highX = d3.max(data, function(d) {
-    try { return d.effect.high; }
-    catch (e) { return -Infinity; }
-  });
+    for (let e of data) {
+      try {
+        [_low, _, _high] = _get_effect(e);
+      } catch(e) { continue; }
+
+      if (_low < lowX) lowX = _low;
+      if (_high > highX) highX = _high;
+    }
+  }
 
   var x = d3.scaleLinear()
     .domain([lowX - Math.abs(0.1 * lowX), highX + Math.abs(0.1 * highX)])
@@ -104,6 +135,7 @@ function forestPlot(config, data) {
   var xAxis = d3.axisBottom(x)
     .ticks(config.nTicks);
 
+  // Add the effect label.
   plot.append('g')
     .attr('transform', function() {
       return translate(0, data.length * layout.rowHeight + 5);
@@ -131,14 +163,10 @@ function forestPlot(config, data) {
 
   trees.append('line')
     .attr('x1', function(d) {
-      try {
-        return x(d.effect.low);
-      } catch(e) { return 0; }
+      try { return x(_get_effect(d)[0]); } catch(e) { return 0; }
     })
     .attr('x2', function(d) {
-      try {
-        return x(d.effect.high);
-      } catch(e) { return 0; }
+      try { return x(_get_effect(d)[2]); } catch(e) { return 0; }
     })
     .attr('y1', layout.rowHeight / 2)
     .attr('y2', layout.rowHeight / 2)
@@ -148,9 +176,7 @@ function forestPlot(config, data) {
   trees.append('rect')
     .filter(function(d) {
       try {
-        d.effect.effect;
-        d.effect.low;
-        d.effect.high;
+        _get_effect(d);
         return true;
       } catch (e) { return false; }
     })
@@ -159,7 +185,7 @@ function forestPlot(config, data) {
       return d;
     })
     .attr('x', function(d) {
-      return x(d.effect.effect) - d.r / 2;
+      return x(_get_effect(d)[1]) - d.r / 2;
     })
     .attr('y', function(d) { return layout.rowHeight / 2 - d.r / 2; })
     .attr('width', function(d) { return d.r; })
@@ -200,9 +226,7 @@ function forestPlot(config, data) {
         // available.
         if (d.overrideLabel) return true;
 
-        d.effect.effect;
-        d.effect.low;
-        d.effect.high;
+        _get_effect(d);
         return true;
       } catch (e) { return false; }
     })
@@ -210,8 +234,9 @@ function forestPlot(config, data) {
       .text(function(d) {
         if (d.overrideLabel) return d.overrideLabel
 
-        return (`${d.effect.effect.toFixed(2)} ` +
-                `(${d.effect.low.toFixed(2)}, ${d.effect.high.toFixed(2)})`);
+        let [_low, _effect, _high] = _get_effect(d);
+        return (`${_effect.toFixed(2)} ` +
+                `(${_low.toFixed(2)}, ${_high.toFixed(2)})`);
       })
       .style('font-size', config.fontSize)
       .style('font-family', config.fontFamily)

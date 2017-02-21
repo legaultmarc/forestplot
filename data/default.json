@@ -37,6 +37,15 @@
       "effect": {"effect": 1, "low": 1, "high": 1},
       "markerSize": 0.5,
       "overrideLabel": "Reference"
+    },
+    {
+      "description": "Something else"
+    },
+    {
+      "description": "Sd syntax",
+      "descriptionOffset": 1,
+      "effect": {"effect": 0.85, "sd": 0.04},
+      "markerSize": 0.5
     }
   ]
 }
