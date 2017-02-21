@@ -218,10 +218,6 @@ function forestPlot(config, data) {
       .attr('dy', (layout.rowHeight - config.fontSize) / 2 + 10)
       .attr('dx', layout.padding.left)
 
-  document.getElementById('save').addEventListener('click', (evnt) => {
-    d3_save_svg.save(d3.select('svg').node(), { filename: 'forestplot' })
-  });
-
 }
 
 
@@ -249,16 +245,18 @@ function loadDataFile() {
 }
 
 // Bind form submit.
-(function () {
+var form = document.getElementById("form");
 
-  var form = document.getElementById("form");
+form.onsubmit = (e) => {
+  loadDataFile();
+  return false;
+}
 
-  form.onsubmit = (e) => {
-    loadDataFile();
-    return false;
-  }
 
-})();
+// Bind save button.
+document.getElementById('save').addEventListener('click', (evnt) => {
+  d3_save_svg.save(d3.select('svg').node(), { filename: 'forestplot' })
+})
 
 
 // First plot with default values.
