@@ -6,6 +6,11 @@ module.exports = {
    * This is needed in order to help resolve the babel module since we are
    * running the express server from 'core'
    **/
+  resolve: {
+    alias: {
+      "d3": "d3/build/d3.js"
+    }
+  },
   resolveLoader: {
     modulesDirectories: [
       path.join(__dirname, 'node_modules')
