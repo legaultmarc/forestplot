@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+
+
+import json
+import csv
+import collections
+import argparse
+from math import exp
+
+
+def verify_columns(h, args):
+    """Make sure that all of the requested columns can be found in the file."""
+    missing = []
+
+    cols = [
+        args.groups,
+        args.effect,
+        args.se,
+        args.lower,
+        args.upper
+    ]
+
+    cols = [i for i in cols if i is not None]
+
+    missing = set(cols) - set(h.keys())
+
+    if missing:
+        print("Some required columns were not found in the CSV file: {}"
+               "".format(missing))
+        return False
+
+    return True
+
+
+def effect_se_to_ci(effect, se):
+    """Convert an effect and se to lower, upper CI values."""
+    # This value is qnorm(0.05/2)
+    l, h = (
+        effect - 1.959964 * se,
+        effect + 1.959964 * se
+    )
+
+    return (l, h) if l <= h else (h, l)
+
+
+def create_plot(reader, h, args):
+    """Create the json file for the plot based on a CSV reader and a dict
+    of column names to index."""
+
+    # We will assign the data points to the right group if needed.
+    groups = collections.OrderedDict()
+
+    # Make variables for the column names.
+    for row in reader:
+        # Check if the effect or the label are null (skip and warn).
+        if row[h[args.effect]] == "" or row[h[args.label]] == "":
+            print("Warning: row '{}' is not valid and is ignored.".format(row))
+            continue
+
+        effect = float(row[h[args.effect]])
+        se = float(row[h[args.se]])
+
+        if args.se:
+            lower, upper = effect_se_to_ci(effect, se)
+
+        else:
+            lower = float(row[h[args.lower]])
+            upper = float(row[h[args.upper]])
+
+        # If the data was provided on the ln-scale we exponentiate it unless
+        # --report-ln is required.
+        if args.ln_scale and not args.report_ln:
+            effect, lower, upper = [exp(i) for i in (effect, lower, upper)]
+
+        entry = {
+            "description": row[h[args.label]],
+            "effect": {"effect": effect, "low": lower, "high": upper},
+            "markerSize": 0.5
+        }
+
+        # Assign to group or to "default"
+        group = row[h[args.groups]] if args.groups else "default"
+
+        if group not in groups:
+            groups[group] = []
+
+        groups[group].append(entry)
+
+    plot = {
+        "plotConfig": {
+            "effectLabel": "Beta" if args.report_ln else "Odds Ratio",
+            "vBar": 0 if args.report_ln else 1,
+            "nTicks": 6,
+        },
+        "data": []
+    }
+
+    if len(groups) == 1:
+        plot["data"] = groups["default"]
+
+    else:
+        for group, data in groups.items():
+            plot["data"].append({"description": group})
+
+            # Add an indent for every field.
+            for d in data:
+                d["descriptionOffset"] = 1
+
+            plot["data"].extend(data)
+
+    return plot
+
+
+def check_args(args):
+    """Make sure that the provided arguments are valid because some
+    combinations may not be (e.g. providing se with upper/lower)."""
+
+    valid = True
+
+    if args.se and args.lower and args.upper:
+        print("Only provide --lower and --upper OR --se, not all three.")
+        valid = False
+
+    elif args.lower and not args.upper:
+        print("No matching --upper bound for the CI.")
+        valid = False
+
+    elif args.upper and not args.lower:
+        print("No matching --lower bound for the CI.")
+        valid = False
+
+    # If only the se is provided, make sure the values are on the ln-scale
+    # because this is the major use case where we compute the CI.
+    if args.se and not args.ln_scale:
+        print("Will only compute the CI from the standard error if the "
+              "data is in the ln-scale. If this is the case, use "
+              "--ln-scale.")
+        valid = False
+
+    return valid
+
+
+def main():
+    args = parse_args()
+
+    valid = check_args(args)
+    if not valid:
+        quit(1)
+
+    with open(args.filename, "rt") as f:
+        reader = csv.reader(f)
+        header = {col: i for i, col in enumerate(next(reader))}
+
+        columns_valid = verify_columns(header, args)
+        if not columns_valid:
+            quit(1)
+
+        plot = create_plot(reader, header, args)
+
+    print("Writing file: '{}'".format(args.output))
+    with open(args.output, "wt") as f:
+        json.dump(plot, f)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "filename",
+        help="The filename from which to create the csv file.",
+    )
+
+
+    parser.add_argument(
+        "--output", "-o",
+        help="Output filename for the json file.",
+        default="forestplot.json"
+    )
+
+
+    parser.add_argument(
+        "--groups",
+        help="Name of the column containing the group values. These values "
+             "will be used for the headers in the plot.",
+    )
+
+    parser.add_argument(
+        "--label",
+        help="Name of the column with the labels to identify rows.",
+        required=True
+    )
+
+    parser.add_argument(
+        "--effect",
+        help="Name of the column with the effect size for the plot (e.g. the "
+             "odds ratio or beta value).",
+        required=True
+    )
+
+    parser.add_argument(
+        "--se",
+        help="Name of the column with the standard error of the effect."
+    )
+
+
+    parser.add_argument(
+        "--lower", "-low",
+        help="Name of the column with the lower CI value."
+    )
+
+    parser.add_argument(
+        "--upper", "-up",
+        help="Name of the column with the lower CI value."
+    )
+
+    parser.add_argument(
+        "--ln-scale",
+        help="Flag to tell the script that the effects are on a log scale. "
+             "This is useful if you want effects on the log-odds scale to be "
+             "converted to the OR scale for plotting.",
+        action="store_true"
+    )
+
+    parser.add_argument(
+        "--report-ln",
+        help="Flag to force the create of the plot on the log scale instead "
+             "of converting to the normal scale (i.e. calling exp on the "
+             "values). ",
+        action="store_true"
+    )
+
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    main()

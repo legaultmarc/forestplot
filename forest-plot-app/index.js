@@ -44,9 +44,9 @@ function forestPlot(config, data) {
 
   var layout = {
     tabWidth: 12,  // In pixels
-    tableWidth: 0.3,
+    tableWidth: 0.4,  // Sometimes it's better to set this at 0.3 and labelWidth at 0.3
     plotWidth: 0.4,
-    labelWidth: 0.3,
+    labelWidth: 0.2,
     rowHeight: 26,
     padding: { left: 5, top: 10 },
     squareFullSize: 24
@@ -62,6 +62,7 @@ function forestPlot(config, data) {
   d3.select(config.mountNode).selectAll("*").remove();
 
   var svg = d3.select(config.mountNode).append('svg')
+    .attr('id', 'svg-forestplot')
     .attr('width', config.width)
     .attr('height', config.height)
     .append('g')
@@ -86,7 +87,7 @@ function forestPlot(config, data) {
   rows
     .append('rect')
       .attr('height', layout.rowHeight)
-      .attr('width', '100%')
+      .attr('width', config.width)
       .attr('fill', (d, i) => { return (i % 2 === 0)? '#f2f1f1': '#fff' })
       .attr('x', 0)
       .attr('y', 0)
